@@ -14,6 +14,5 @@ Clone the repository and follow the progress through commit history and document
 
 Happy coding, and enjoy the journey of creating something unique from the ground up!
 Sources:
-https://www.buildyourownlisp.com/chapter4_interactive_prompt
 [Build your Own Lisp book](https://www.buildyourownlisp.com/contents)
 [C Language Reference](https://en.cppreference.com/w/c)
