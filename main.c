@@ -4,19 +4,16 @@
 
 static char buffer[2048];
 
-char* readline(char* prompt) {
-  fputs(prompt, stdout);
+char* readline(char* prompt){
+  fputs(prompt,stdout);
   fgets(buffer,2048,stdin);
-
   char* cpy = malloc(strlen(buffer)+1);
   strcpy(cpy,buffer);
   cpy[strlen(cpy)-1] = '\0';
   return cpy;
 }
 
-void add_history(char* unused) {}
-
-#else 
+#else
 #include <editline/readline.h>
 #include <editline/history.h>
 #endif
@@ -47,5 +44,40 @@ long eval(mpc_ast_t* t){
 }
 
 int main(int argc, char** argv){
+  
+  mpc_parser_t* Number    = mpc_new("number");
+  mpc_parser_t* Operator  = mpc_new("operator");
+  mpc_parser_t* Expr      = mpc_new("expr");
+  mpc_parser_t* NanoLispy = mpc_new("nanolispy");
+
+  mpca_lang(MPCA_LANG_DEFAULT,
+  "                                               \
+    number   :  /-?[0-9]+/ ;                       \
+    operator :  '+' | '-' | '*' | '/';              \
+    expr     : <number> | '(' <operator> <expr>+ ')';\
+    nanolispy: /^/ <operator> <expr>+ /$/ ;           \
+  "                 
+  ,Number,Operator,Expr,NanoLispy);
+  
+  puts("NanoLispy, press ctrl+C to exit...");
+  
+  while (1){
+    
+    char* input= readline("nanolispy>");
+    add_history(input);
+    mpc_result_t r;
+    if(mpc_parse("<stdin>",input,NanoLispy,&r)){
+      
+      long result = eval(r.output);
+      printf("%li\n",result);
+      mpc_ast_delete(r.output);
+    }else {
+      mpc_err_print(r.error);
+      mpc_err_delete(r.error);
+    }
+    free(input);
+
+  }
+  mpc_cleanup(4,Number,Operator,Expr,NanoLispy);
   return 0;
 }
