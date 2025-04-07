@@ -15,19 +15,37 @@ void add_history(char* unused);
 #include <editline/history.h>
 #endif
 
-#define LASSERT(args, cond, err) \
-  if (!(cond)) { lval_del(args); return lval_err(err); }
+#define LASSERT_TYPE(func, args, index, expect) \
+  if ((args)->cell[index]->type != (expect)) { \
+    lval* err = lval_err("Function '" func "' passed incorrect type."); \
+    lval_del(args); return err; }
+struct lval;
+struct lenv;
+typedef struct lval lval;
+typedef struct lenv lenv;
 
-enum { LVAL_ERR, LVAL_NUM, LVAL_SYM, LVAL_SEXPR, LVAL_QEXPR };
+typedef lval*(*lbuiltin)(lenv*,lval*);
+enum { LVAL_ERR, LVAL_NUM, LVAL_SYM,LVAL_FUNC, LVAL_SEXPR, LVAL_QEXPR };
+
+struct lenv {
+  int count;
+  char** syms;
+  lval** vals;
+};
+
 
 typedef struct lval {
   int type;
+
   long num;
   char* err;
   char* sym;
+  lbuiltin func;
+
   int count;
   struct lval** cell;
 } lval;
+
 
 lval* lval_num(long x);
 lval* lval_err(char* m);
@@ -41,9 +59,13 @@ lval* lval_take(lval* v, int i);
 void lval_print(lval* v);
 void lval_expr_print(lval* v, char open, char close);
 void lval_println(lval* v);
-lval* builtin_op(lval* a, char* op);
-lval* lval_eval(lval* v);
-lval* lval_eval_sexpr(lval* v);
+lval* builtin_op(lenv* e,lval* a, char* op);
+lval* builtin_add(lenv* e, lval* a);
+lval* builtin_sub(lenv* e, lval* a);
+lval* builtin_mul(lenv* e, lval* a);
+lval* builtin_div(lenv* e, lval* a);
+lval* lval_eval(lenv* e,lval* v);
+lval* lval_eval_sexpr(lenv* e,lval* v);
 lval* lval_read_num(mpc_ast_t* t);
 lval* lval_read(mpc_ast_t* t);
 lval* builtin_head(lval* a);
@@ -53,6 +75,11 @@ lval* builtin_eval(lval* a);
 lval* builtin_join(lval* a);
 lval* lval_join(lval* x, lval* y);
 lval* builtin(lval* a, char* func);
+lval* lval_func(lbuiltin func);
+lenv* lenv_new(void);
+void lenv_del(lenv* e);
+lval* lenv_get(lenv* e,lval* k);
+void lenv_put(lenv* e, lval* k,lval* v);
 int main(int argc, char** argv);
 
 #endif
