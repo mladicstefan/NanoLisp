@@ -228,7 +228,7 @@ lval* lval_read(mpc_ast_t* t) {
   
   return x;
 }
-lval* builtin_head(lval* a) {
+lval* builtin_head(lenv* e,lval* a) {
   LASSERT(a, a->count == 1,
     "Function 'head' passed too many arguments!");
   LASSERT(a, a->cell[0]->type == LVAL_QEXPR,
@@ -240,7 +240,7 @@ lval* builtin_head(lval* a) {
   while (v->count > 1) { lval_del(lval_pop(v, 1)); }
   return v;
 }
-lval* builtin_tail(lval* a) {
+lval* builtin_tail(lenv* e,lval* a) {
   LASSERT(a, a->count == 1,
     "Function 'tail' passed too many arguments!");
   LASSERT(a, a->cell[0]->type == LVAL_QEXPR,
@@ -253,7 +253,7 @@ lval* builtin_tail(lval* a) {
   return v;
 }
 
-lval* builtin_list(lval* a){
+lval* builtin_list(lenv* e,lval* a){
   a->type = LVAL_QEXPR;
   return a;
 }
@@ -269,7 +269,7 @@ lval* builtin_eval(lenv* e,lval* a){
   return lval_eval(e,x);
 }
 
-lval* builtin_join(lval* a){
+lval* builtin_join(lenv* e,lval* a){
 
   for (int i = 0; i < a->count; i++){
     LASSERT(a,a->cell[i]->type == LVAL_QEXPR,
@@ -295,11 +295,11 @@ lval* lval_join(lval* x,lval* y){
 }
 
 lval* builtin(lenv* e,lval*a, char* func){
-  if (strcmp("list", func) == 0) { return builtin_list(a); }
-  if (strcmp("head", func) == 0) { return builtin_head(a); }
-  if (strcmp("tail", func) == 0) { return builtin_tail(a); }
-  if (strcmp("join", func) == 0) { return builtin_join(a); }
-  if (strcmp("eval", func) == 0) { return builtin_eval(a); }
+  if (strcmp("list", func) == 0) { return builtin_list(e,a); }
+  if (strcmp("head", func) == 0) { return builtin_head(e,a); }
+  if (strcmp("tail", func) == 0) { return builtin_tail(e,a); }
+  if (strcmp("join", func) == 0) { return builtin_join(e,a); }
+  if (strcmp("eval", func) == 0) { return builtin_eval(e,a); }
   if (strstr("+-/*", func)) { return builtin_op(e,a, func); }
   lval_del(a);
   return lval_err("Unknown Function!");
@@ -323,7 +323,7 @@ lval* builtin_div(lenv* e, lval* a) {
 
 void lenv_add_builtin(lenv* e, char* name, lbuiltin func) {
   lval* k = lval_sym(name);
-  lval* v = lval_fun(func);
+  lval* v = lval_func(func);
   lenv_put(e, k, v);
   lval_del(k); lval_del(v);
 }

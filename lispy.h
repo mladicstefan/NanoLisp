@@ -17,7 +17,7 @@ void add_history(char* unused);
 
 #define LASSERT_TYPE(func, args, index, expect) \
   if ((args)->cell[index]->type != (expect)) { \
-    lval* err = lval_err("Function '" func "' passed incorrect type."); \
+    lval* err = lval_err("Function '" #func "' passed incorrect type."); \
     lval_del(args); return err; }
 struct lval;
 struct lenv;
@@ -68,13 +68,13 @@ lval* lval_eval(lenv* e,lval* v);
 lval* lval_eval_sexpr(lenv* e,lval* v);
 lval* lval_read_num(mpc_ast_t* t);
 lval* lval_read(mpc_ast_t* t);
-lval* builtin_head(lval* a);
-lval* builtin_tail(lval* a);
-lval* builtin_list(lval* a);
-lval* builtin_eval(lval* a);
-lval* builtin_join(lval* a);
+lval* builtin_head(lenv* e,lval* a);
+lval* builtin_tail(lenv* ,lval* a);
+lval* builtin_list(lenv* e,lval* a);
+lval* builtin_eval(lenv* e,lval* a);
+lval* builtin_join(lenv* e,lval* a);
 lval* lval_join(lval* x, lval* y);
-lval* builtin(lval* a, char* func);
+lval* builtin(lenv* e,lval* a, char* func);
 lval* lval_func(lbuiltin func);
 lenv* lenv_new(void);
 void lenv_del(lenv* e);
