@@ -37,11 +37,18 @@ lval* lval_num(long x) {
   return v;
 }
 
-lval* lval_err(char* m) {
+lval* lval_err(char* fmt, ...){
   lval* v = malloc(sizeof(lval));
   v->type = LVAL_ERR;
-  v->err = malloc(strlen(m) + 1);
-  strcpy(v->err, m);
+
+  va_list va;
+  va_start(va,fmt);
+
+  v->err = malloc(512);
+  vsnprintf(v->err,511,fmt,va);
+  v->err = realloc(v->err,strlen(v->err)+1);
+
+  va_end(va);
   return v;
 }
 
@@ -359,6 +366,7 @@ void lenv_add_builtins(lenv* e) {
   lenv_add_builtin(e, "-", builtin_sub);
   lenv_add_builtin(e, "*", builtin_mul);
   lenv_add_builtin(e, "/", builtin_div);
+  lenv_add_builtin(e, "def",  builtin_def);
 }
 
 lval* lval_func(lbuiltin func){
@@ -367,6 +375,28 @@ lval* lval_func(lbuiltin func){
   v->func = func;
   return v;
 }
+lval* builtin_def(lenv* e,lval* a){
+  LASSERT(a, a->cell[0]->type == LVAL_QEXPR,
+          "Func def passed incorrect type");
+
+  lval* syms = a->cell[0];
+
+  for (int i = 0; i < syms->count; i++){
+    LASSERT(a, syms->cell[i]->type == LVAL_SYM,
+            "Func def cannot define non-symbol");
+  }
+  LASSERT(a, syms->count == a->count-1,
+          "Function def cannot define incorrect"
+          "number of values to symbols");
+
+  for (int i = 0; i < syms->count;i++){
+    lenv_put(e,syms->cell[i],a->cell[i+1]);
+  }
+
+  lval_del(a);
+  return lval_sexpr();
+}
+
 lval* lval_copy(lval* v) {
 
   lval* x = malloc(sizeof(lval));
@@ -451,13 +481,13 @@ int main(int argc, char** argv) {
   mpc_parser_t* Lispy  = mpc_new("lispy");
   
   mpca_lang(MPCA_LANG_DEFAULT,
-    "                                          \
-      number : /-?[0-9]+/ ;                    \
-      symbol :/[a-zA-Z0-9_+\\-*\\/\\\\=<>!&]+/; \
-      sexpr  : '(' <expr>* ')' ;               \
-      qexpr  : '{' <expr>* '}' ;               \
-      expr   : <number> | <symbol> | <sexpr> ; \
-      lispy  : /^/ <expr>* /$/ ;               \
+    "                                                     \
+      number : /-?[0-9]+/ ;                               \
+      symbol : /[a-zA-Z0-9_+\\-*\\/\\\\=<>!&]+/ ;         \
+      sexpr  : '(' <expr>* ')' ;                          \
+      qexpr  : '{' <expr>* '}' ;                          \
+      expr   : <number> | <symbol> | <sexpr> | <qexpr> ;  \
+      lispy  : /^/ <expr>* /$/ ;                          \
     ",
     Number, Symbol, Sexpr,Qexpr, Expr, Lispy);
   

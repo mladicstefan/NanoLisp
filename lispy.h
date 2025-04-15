@@ -44,7 +44,7 @@ typedef struct lval {
 
 
 lval* lval_num(long x);
-lval* lval_err(char* m);
+lval* lval_err(char* fmt,...);
 lval* lval_sym(char* s);
 lval* lval_sexpr(void);
 lval* lval_qexpr(void);
@@ -71,6 +71,7 @@ lval* builtin_eval(lenv* e,lval* a);
 lval* builtin_join(lenv* e,lval* a);
 lval* lval_join(lval* x, lval* y);
 lval* builtin(lenv* e,lval* a, char* func);
+lval* builtin_def(lenv* e,lval* a);
 lval* lval_func(lbuiltin func);
 lenv* lenv_new(void);
 lval* lval_copy(lval* v);
