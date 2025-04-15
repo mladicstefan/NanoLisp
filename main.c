@@ -19,6 +19,16 @@ void add_history(char* unused) {}
 #include <editline/readline.h>
 #include <editline/history.h>
 #endif
+#define LASSERT(args, cond, fmt, ...) \
+  if (!(cond)) { \
+    lval* err = lval_err(fmt, ##__VA_ARGS__); \
+    lval_del(args); \
+    return err; \
+  }
+#define LASSERT_TYPE(func, args, index, expect) \
+  if ((args)->cell[index]->type != (expect)) { \
+    lval* err = lval_err("Function '" #func "' passed incorrect type."); \
+    lval_del(args); return err; }
 
 lval* lval_num(long x) {
   lval* v = malloc(sizeof(lval));
@@ -191,6 +201,15 @@ lval* lval_eval_sexpr(lenv* e,lval* v) {
   return result;
 }
 
+lval* lenv_get(lenv* e,lval* k){
+  for (int i = 0; i< e->count; i++){
+    if (strcmp(e->syms[i], k->sym) == 0){
+      return lval_copy(e->vals[i]);
+    }
+  }
+  return lval_err("unbound symbol!");
+}
+
 lval* lval_eval(lenv* e,lval* v) {
   if (v->type == LVAL_SYM){
     lval* x = lenv_get(e,v);
@@ -348,32 +367,34 @@ lval* lval_func(lbuiltin func){
   v->func = func;
   return v;
 }
+lval* lval_copy(lval* v) {
 
-lval* lval_copy(lval* v){
   lval* x = malloc(sizeof(lval));
   x->type = v->type;
 
-  switch (v->type){
+  switch (v->type) {
 
     case LVAL_FUNC: x->func = v->func; break;
-    case LVAL_NUM:  x->num = v->num;   break;
-    
+    case LVAL_NUM: x->num = v->num; break;
+
     case LVAL_ERR:
-      x->err = malloc(strlen(v->err)+1);
-      strcpy(x->err,v->err); break;
+      x->err = malloc(strlen(v->err) + 1);
+      strcpy(x->err, v->err); break;
+
     case LVAL_SYM:
-      x->sym = malloc(strlen(v->sym)+1);
-      strcpy(x->sym,v->sym); break;
+      x->sym = malloc(strlen(v->sym) + 1);
+      strcpy(x->sym, v->sym); break;
 
     case LVAL_SEXPR:
     case LVAL_QEXPR:
       x->count = v->count;
       x->cell = malloc(sizeof(lval*) * x->count);
-      for (int i = 0; i<x->count;i++){
+      for (int i = 0; i < x->count; i++) {
         x->cell[i] = lval_copy(v->cell[i]);
       }
-      break;
+    break;
   }
+
   return x;
 }
 

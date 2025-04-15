@@ -15,10 +15,6 @@ void add_history(char* unused);
 #include <editline/history.h>
 #endif
 
-#define LASSERT_TYPE(func, args, index, expect) \
-  if ((args)->cell[index]->type != (expect)) { \
-    lval* err = lval_err("Function '" #func "' passed incorrect type."); \
-    lval_del(args); return err; }
 struct lval;
 struct lenv;
 typedef struct lval lval;
@@ -77,6 +73,7 @@ lval* lval_join(lval* x, lval* y);
 lval* builtin(lenv* e,lval* a, char* func);
 lval* lval_func(lbuiltin func);
 lenv* lenv_new(void);
+lval* lval_copy(lval* v);
 void lenv_del(lenv* e);
 lval* lenv_get(lenv* e,lval* k);
 void lenv_put(lenv* e, lval* k,lval* v);
