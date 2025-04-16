@@ -7,13 +7,13 @@
 #include <string.h>
 #include <errno.h>
 
-#ifdef _WIN32
+//#ifdef _WIN32
 char* readline(char* prompt);
 void add_history(char* unused);
-#else
-#include <editline/readline.h>
-#include <editline/history.h>
-#endif
+//#else
+//#include <editline/readline.h>
+//#include <editline/history.h>
+//#endif
 
 struct lval;
 struct lenv;
@@ -36,7 +36,11 @@ typedef struct lval {
   long num;
   char* err;
   char* sym;
+
   lbuiltin func;
+  lenv* env;
+  lval* formals;
+  lval* body;
 
   int count;
   struct lval** cell;
@@ -75,9 +79,13 @@ lval* builtin_def(lenv* e,lval* a);
 lval* lval_func(lbuiltin func);
 lenv* lenv_new(void);
 lval* lval_copy(lval* v);
+lval* lval_lambda(lval* formals,lval* body);
 void lenv_del(lenv* e);
 lval* lenv_get(lenv* e,lval* k);
 void lenv_put(lenv* e, lval* k,lval* v);
+lenv* lenv_copy(lenv* e);
+lval* builtin_lambda(lenv* e, lval* a);
 int main(int argc, char** argv);
 
+char* ltype_name(int t); 
 #endif

@@ -1,6 +1,6 @@
 #include "mpc.h"
 #include "lispy.h"
-#ifdef _WIN32
+//#ifdef _WIN32
 
 static char buffer[2048];
 
@@ -15,10 +15,10 @@ char* readline(char* prompt) {
 
 void add_history(char* unused) {}
 
-#else
-#include <editline/readline.h>
-#include <editline/history.h>
-#endif
+//#else
+//#include <editline/readline.h>
+//#include <editline/history.h>
+//#endif
 #define LASSERT(args, cond, fmt, ...) \
   if (!(cond)) { \
     lval* err = lval_err(fmt, ##__VA_ARGS__); \
@@ -29,6 +29,16 @@ void add_history(char* unused) {}
   if ((args)->cell[index]->type != (expect)) { \
     lval* err = lval_err("Function '" #func "' passed incorrect type."); \
     lval_del(args); return err; }
+
+#define LASSERT_NUM(func, args, num) \
+  LASSERT(args, args->count == num, \
+    "Function '%s' passed incorrect number of arguments. " \
+    "Got %i, Expected %i.", \
+    func, args->count, num)
+
+#define LASSERT_NOT_EMPTY(func, args, index) \
+  LASSERT(args, args->cell[index]->count != 0, \
+    "Function '%s' passed {} for argument %i.", func, index);
 
 lval* lval_num(long x) {
   lval* v = malloc(sizeof(lval));
@@ -83,7 +93,14 @@ void lval_del(lval* v) {
     
     case LVAL_ERR:  free(v->err); break;
     case LVAL_SYM:  free(v->sym); break;
-    case LVAL_FUNC:               break;
+    case LVAL_FUNC:
+      if (!v->func){
+        lenv_del(v->env);
+        lval_del(v->formals);
+        lval_del(v->body);
+      }
+
+      break;
 
     case LVAL_QEXPR:
     case LVAL_SEXPR:
@@ -143,7 +160,14 @@ void lval_print(lval* v) {
     case LVAL_SYM:   printf("%s", v->sym); break;
     case LVAL_SEXPR: lval_expr_print(v, '(', ')'); break;
     case LVAL_QEXPR: lval_expr_print(v, '{', '}'); break;
-    case LVAL_FUNC : printf("<function>"); break;
+    case LVAL_FUNC:
+      if (v->func) {
+        printf("<func>");
+      } else {
+        printf("(\\ "); lval_print(v->formals);
+        putchar(' '); lval_print(v->body); putchar(')');
+      }
+    break;
   }
 }
 
@@ -367,6 +391,7 @@ void lenv_add_builtins(lenv* e) {
   lenv_add_builtin(e, "*", builtin_mul);
   lenv_add_builtin(e, "/", builtin_div);
   lenv_add_builtin(e, "def",  builtin_def);
+  lenv_add_builtin(e, "\\", builtin_lambda);
 }
 
 lval* lval_func(lbuiltin func){
@@ -403,8 +428,16 @@ lval* lval_copy(lval* v) {
   x->type = v->type;
 
   switch (v->type) {
-
-    case LVAL_FUNC: x->func = v->func; break;
+    case LVAL_FUNC:
+      if (v->func) {
+        x->func= v->func;
+    } else {
+        x->func= NULL;
+        x->env = lenv_copy(v->env);
+        x->formals = lval_copy(v->formals);
+        x->body = lval_copy(v->body);
+    }
+    break;
     case LVAL_NUM: x->num = v->num; break;
 
     case LVAL_ERR:
@@ -470,6 +503,49 @@ void lenv_put(lenv* e,lval* k,lval* v){
   e->syms[e->count-1] = malloc(strlen(k->sym)+1);
   strcpy(e->syms[e->count-1], k->sym);
 }
+
+lval* lval_lambda(lval* formals, lval* body){
+  lval* v = malloc(sizeof(lval));
+  v->type = LVAL_FUNC;
+
+  v->func = NULL;
+  v->env = lenv_new();
+
+  v->formals = formals;
+  v->body = body;
+  return v;
+}
+
+char* ltype_name(int t) {
+  switch(t) {
+    case LVAL_FUNC: return "Function";
+    case LVAL_NUM: return "Number";
+    case LVAL_ERR: return "Error";
+    case LVAL_SYM: return "Symbol";
+    case LVAL_SEXPR: return "S-Expression";
+    case LVAL_QEXPR: return "Q-Expression";
+    default: return "Unknown";
+  }
+}
+
+lval* builtin_lambda(lenv* e,lval* a){
+  LASSERT_NUM("\\", a, 2);
+  LASSERT_TYPE("\\", a, 0, LVAL_QEXPR);
+  LASSERT_TYPE("\\", a, 1, LVAL_QEXPR);
+
+  for (int i = 0; i < a->cell[0]->count; i++) {
+    LASSERT(a, (a->cell[0]->cell[i]->type == LVAL_SYM),
+      "Cannot define non-symbol. Got %s, Expected %s.",
+      ltype_name(a->cell[0]->cell[i]->type),ltype_name(LVAL_SYM));
+  }
+
+  lval* formals = lval_pop(a, 0);
+  lval* body = lval_pop(a, 0);
+  lval_del(a);
+
+  return lval_lambda(formals, body);
+}
+
 
 int main(int argc, char** argv) {
   
