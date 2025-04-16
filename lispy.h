@@ -92,6 +92,15 @@ void lenv_def(lenv* e, lval*k, lval* v);
 lenv* lenv_copy(lenv* e);
 lval* builtin_lambda(lenv* e, lval* a);
 lval* lval_call(lenv* e, lval* f, lval* a);
+
+// conditionals
+
+// comparisons
+lval* builtin_gt(lenv* e, lval* a);
+lval* builtin_ge(lenv* e, lval* a);
+lval* builtin_lt(lenv* e, lval* a);
+lval* builtin_le(lenv* e, lval* a);
+lval* builtin_ord(lenv* e, lval* a, char* op);
 int main(int argc, char** argv);
 
 char* ltype_name(int t); 
