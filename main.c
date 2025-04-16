@@ -417,6 +417,61 @@ void lenv_add_builtin(lenv* e, char* name, lbuiltin func) {
   lval_del(k); lval_del(v);
 }
 
+lval* builtin_error(lenv* e, lval* a) {
+  LASSERT_NUM("error", a, 1);
+  LASSERT_TYPE("error", a, 0, LVAL_STR);
+
+  lval* err = lval_err(a->cell[0]->str);
+
+  lval_del(a);
+  return err;
+}
+
+lval* builtin_print(lenv* e, lval* a) {
+
+  for (int i = 0; i < a->count; i++) {
+    lval_print(a->cell[i]); putchar(' ');
+  }
+
+  putchar('\n');
+  lval_del(a);
+
+  return lval_sexpr();
+}
+
+lval* builtin_load(lenv* e, lval* a) {
+  LASSERT_NUM("load", a, 1);
+  LASSERT_TYPE("load", a, 0, LVAL_STR);
+
+  mpc_result_t r;
+  if (mpc_parse_contents(a->cell[0]->str, Lispy, &r)) {
+
+    lval* expr = lval_read(r.output);
+    mpc_ast_delete(r.output);
+
+    while (expr->count) {
+      lval* x = lval_eval(e, lval_pop(expr, 0));
+      if (x->type == LVAL_ERR) { lval_println(x); }
+      lval_del(x);
+    }
+
+    lval_del(expr);
+    lval_del(a);
+
+    return lval_sexpr();
+
+  } else {
+    char* err_msg = mpc_err_string(r.error);
+    mpc_err_delete(r.error);
+
+    lval* err = lval_err("Could not load Library %s", err_msg);
+    free(err_msg);
+    lval_del(a);
+
+    return err;
+  }
+}
+
 void lenv_add_builtins(lenv* e) {
 
   lenv_add_builtin(e, "list", builtin_list);
@@ -442,6 +497,10 @@ void lenv_add_builtins(lenv* e) {
   lenv_add_builtin(e, "<",  builtin_lt);
   lenv_add_builtin(e, ">=", builtin_ge);
   lenv_add_builtin(e, "<=", builtin_le);
+
+  lenv_add_builtin(e, "load",  builtin_load);
+  lenv_add_builtin(e, "error", builtin_error);
+  lenv_add_builtin(e, "print", builtin_print);
 }
 
 lval* lval_func(lbuiltin func){
@@ -819,16 +878,17 @@ lval* lval_str(char* s){
   return v;
 }
 
+
 int main(int argc, char** argv) {
   
-  mpc_parser_t* Number = mpc_new("number");
-  mpc_parser_t* Symbol = mpc_new("symbol");
-  mpc_parser_t* String = mpc_new("string");
-  mpc_parser_t* Comment= mpc_new("comment");
-  mpc_parser_t* Sexpr  = mpc_new("sexpr");
-  mpc_parser_t* Qexpr  = mpc_new("qexpr");
-  mpc_parser_t* Expr   = mpc_new("expr");
-  mpc_parser_t* Lispy  = mpc_new("lispy");
+  Number = mpc_new("number");
+  Symbol = mpc_new("symbol");
+  String = mpc_new("string");
+  Comment= mpc_new("comment");
+  Sexpr  = mpc_new("sexpr");
+  Qexpr  = mpc_new("qexpr");
+  Expr   = mpc_new("expr");
+  Lispy  = mpc_new("lispy");
   
   mpca_lang(MPCA_LANG_DEFAULT,
   "                                              \
@@ -868,6 +928,17 @@ int main(int argc, char** argv) {
     
     free(input);
     
+  }
+  if (argc >= 2) {
+
+    for (int i = 1; i < argc; i++) {
+
+      lval* args = lval_add(lval_sexpr(), lval_str(argv[i]));
+      lval* x = builtin_load(e, args);
+
+      if (x->type == LVAL_ERR) { lval_println(x); }
+      lval_del(x);
+    }
   }
   lenv_del(e);
   

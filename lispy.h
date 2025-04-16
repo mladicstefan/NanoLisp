@@ -50,6 +50,15 @@ typedef struct lval {
 } lval;
 
 
+mpc_parser_t* Number;
+mpc_parser_t* Symbol;
+mpc_parser_t* String;
+mpc_parser_t* Comment;
+mpc_parser_t* Sexpr;
+mpc_parser_t* Qexpr;
+mpc_parser_t* Expr;
+mpc_parser_t* Lispy;
+
 lval* lval_num(long x);
 lval* lval_err(char* fmt,...);
 lval* lval_sym(char* s);
@@ -96,7 +105,9 @@ void lenv_def(lenv* e, lval*k, lval* v);
 lenv* lenv_copy(lenv* e);
 lval* builtin_lambda(lenv* e, lval* a);
 lval* lval_call(lenv* e, lval* f, lval* a);
-
+lval* builtin_load(lenv* e, lval* a);
+lval* builtin_print(lenv* e, lval* a);
+lval* builtin_error(lenv* e, lval* a);
 // conditionals
 lval* builtin_if(lenv* e, lval* a);
 // comparisons
